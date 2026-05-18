@@ -1,6 +1,5 @@
 # LLM 코딩 행동 지침
 
-[Andrej Karpathy의 관찰](https://x.com/karpathy/status/2015883857489522876)을 바탕으로, LLM이 흔히 하는 코딩 실수를 줄이기 위한 행동 지침이다. 프로젝트별 지침이 있으면 본 문서와 병합해 사용한다.
 
 > **트레이드오프:** 신중함을 속도보다 우선한다. 사소한 작업은 상황에 맞게 판단한다.
 
@@ -69,7 +68,3 @@
 
 **지침이 실제로 도움이 되는지:** diff에 불필요한 변경이 줄고, 복잡도 때문에 되돌리는 일이 줄며, 구현 전 질문으로 결정이 더 선명해지는지 본다.
 
-## 출처
-
-- Andrej Karpathy, [X 게시물](https://x.com/karpathy/status/2015883857489522876) (LLM 코딩 관찰)
-- 구조·문장은 커뮤니티 정리 예: [forrestchang/andrej-karpathy-skills — karpathy-guidelines](https://github.com/forrestchang/andrej-karpathy-skills/blob/main/skills/karpathy-guidelines/SKILL.md)와 대응시켰다.

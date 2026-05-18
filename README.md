@@ -4,8 +4,6 @@
 
 ## 하네스 엔지니어링 (Karpathy 기준)
 
-모델만 두면 흔히 **가정을 숨기고**, **요청보다 큰 코드**를 쓰고, **주변 파일까지 손대며**, **“끝났다”의 기준이 없는** 식으로 동작한다. [Andrej Karpathy의 관찰](https://x.com/karpathy/status/2015883857489522876)을 바탕으로 한 대응은 네 가지 축으로 정리한다.
-
 | 원칙 | 한 줄 |
 | --- | --- |
 | **1. 구현 전 사고** | 가정·모호함·트레이드오프를 말로 드러내고, 불명확하면 구현 전에 멈춘다. |
@@ -38,7 +36,3 @@
 2. 가능하면 **완료 정의**를 한 문장 붙인다.
 3. 네 원칙은 `CLAUDE.md`를 기준으로 해석한다.
 
-## 출처
-
-- Andrej Karpathy, [X 게시물](https://x.com/karpathy/status/2015883857489522876)
-- 원칙 정리 예: [karpathy-guidelines SKILL](https://github.com/forrestchang/andrej-karpathy-skills/blob/main/skills/karpathy-guidelines/SKILL.md)

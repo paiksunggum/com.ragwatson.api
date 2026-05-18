@@ -1,7 +1,5 @@
 # Cursor 하네스 엔지니어링
 
-이 문서는 **Cursor에서 LLM 에이전트를 어떻게 묶을지(하네스)** 설계할 때의 기준이다. 행동 규범 자체는 [Andrej Karpathy의 관찰](https://x.com/karpathy/status/2015883857489522876)에서 출발한 네 가지 원칙과 같고, 세부 문장은 `CLAUDE.md`에 정리되어 있다.
-
 > **트레이드오프:** 하네스는 모델을 느리게 보이게 할 수 있다. 대신 잘못된 가정·과잉 구현·부수적 수정·모호한 “완료”를 줄인다.
 
 ## 하네스가 막는 것
@@ -63,8 +61,3 @@ Karpathy가 반복적으로 짚는 패턴은 대략 네 가지다.
 
 - `CLAUDE.md` — 네 원칙 전문
 - `.cursorrules` — Cursor에 항상 줄 압축 규칙
-
-## 출처
-
-- Andrej Karpathy, [X 게시물](https://x.com/karpathy/status/2015883857489522876)
-- 원칙 정리 예: [karpathy-guidelines SKILL](https://github.com/forrestchang/andrej-karpathy-skills/blob/main/skills/karpathy-guidelines/SKILL.md)
