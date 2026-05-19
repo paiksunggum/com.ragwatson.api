@@ -25,15 +25,19 @@ from .matrix.app.keymaker import get_keymaker
 keymaker = get_keymaker()
 
 from .agora.app.schemas import SignupRequest, SignupResponse
-from .agora.app.signup_controller import SignupController
 from .secom.app.controllers.user_controller import UserController
 from .secom.app.models.role import UserRole
-from .secom.app.schemas import InitDbResponse, UserRegisterRequest, UserResponse
-from .secom.app.schemas.user_schema import UserSchema
+from .secom.app.schemas import (
+    InitDbResponse,
+    UserLoginResponse,
+    UserRegisterRequest,
+    UserResponse,
+)
+from .secom.app.schemas.user_schema import UserLoginSchema, UserSchema
 from .chat.app.chat_page import chat_page_html
 from .chat.app.chloe_controller import ChloeController
 from .chat.app.schemas import ChatRequest, ChatResponse
-from .database import get_db, neon_now
+from .database import create_tables, get_db, neon_now
 from .titanic.app.james_controller import JamesController
 from .weather.app.schemas import WeatherResponse
 from .weather.app.weather_controller import WeatherController
@@ -48,6 +52,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    await create_tables()
 
 
 @app.get("/")
@@ -129,26 +138,42 @@ def chat(req: ChatRequest):
         ) from e
 
 
-#회원가입
+# 회원가입
 @app.post("/signup", response_model=SignupResponse)
-def signup(req: SignupRequest):
-    UserController().save_user(
-        UserSchema(
-            user_id=req.userId,
-            password=req.password,
-            email=req.email or f"{req.userId}@naver.com",
-            name=req.name,
-            birthdate=req.birthdate,
-            gender=req.gender,
-            role=UserRole.USER,
+async def signup(req: SignupRequest, db: AsyncSession = Depends(get_db)):
+    controller = UserController(db)
+    try:
+        await controller.save_user(
+            UserSchema(
+                user_id=req.userId,
+                password=req.password,
+                email=req.email or f"{req.userId}@naver.com",
+                name=req.name,
+                birthdate=req.birthdate,
+                gender=req.gender,
+                role=UserRole.USER,
+            )
         )
-    )
-    return SignupController().signup(req)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return SignupResponse(message="회원가입이 완료되었습니다.")
+
+
+@app.post("/login", response_model=UserLoginResponse)
+async def login(req: UserLoginSchema, db: AsyncSession = Depends(get_db)):
+    try:
+        await UserController(db).login_user(req)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from e
+    return UserLoginResponse(message="로그인에 성공했습니다.")
 
 
 @app.post("/secom/db/init", response_model=InitDbResponse)
 async def secom_init_db(db: AsyncSession = Depends(get_db)):
-    return await UserController(db).init_db()
+    try:
+        return await UserController(db).init_db()
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
 
 @app.post("/secom/users/register", response_model=UserResponse)
@@ -156,20 +181,8 @@ async def secom_register_user(
     req: UserRegisterRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    controller = UserController(db)
-    controller.save_user(
-        UserSchema(
-            user_id=req.user_id,
-            password=req.password,
-            email=req.email,
-            name=req.name,
-            birthdate=req.birthdate,
-            gender=req.gender,
-            role=UserRole(req.role),
-        )
-    )
     try:
-        return await controller.register(req)
+        return await UserController(db).register(req)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
 

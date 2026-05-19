@@ -32,3 +32,8 @@ class InitDbResponse(BaseModel):
     ok: bool = True
     message: str
     seeded: list[UserResponse]
+
+
+class UserLoginResponse(BaseModel):
+    ok: bool = True
+    message: str = "로그인 요청을 받았습니다."

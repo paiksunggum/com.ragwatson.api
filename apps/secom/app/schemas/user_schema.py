@@ -11,3 +11,10 @@ class UserSchema(BaseModel):
     birthdate: str
     gender: str
     role: UserRole
+
+
+class UserLoginSchema(BaseModel):
+    """로그인 시 레이어 간 전달 (폼 이메일은 user_id에 담음)."""
+
+    user_id: str
+    password: str

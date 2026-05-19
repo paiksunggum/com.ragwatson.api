@@ -16,7 +16,25 @@ _backend_root = Path(__file__).resolve().parent.parent
 load_dotenv(_backend_root / ".env")
 load_dotenv(find_dotenv(usecwd=True), override=False)
 
-database_url: str | None = (os.getenv("DATABASE_URL") or "").strip() or None
+def normalize_async_database_url(url: str) -> str:
+    u = url.strip()
+    if "+psycopg_async" in u or "+asyncpg" in u:
+        return u
+    if u.startswith("postgresql+psycopg://"):
+        return u.replace("postgresql+psycopg://", "postgresql+psycopg_async://", 1)
+    if u.startswith("postgresql://"):
+        return u.replace("postgresql://", "postgresql+psycopg_async://", 1)
+    if u.startswith("postgres://"):
+        return u.replace("postgres://", "postgresql+psycopg_async://", 1)
+    return u
+
+
+_raw_database_url: str | None = (os.getenv("DATABASE_URL") or "").strip() or None
+database_url: str | None = (
+    normalize_async_database_url(_raw_database_url)
+    if _raw_database_url
+    else None
+)
 
 engine = None
 AsyncSessionLocal = None
@@ -56,6 +74,17 @@ async def neon_now(session: AsyncSession) -> dict:
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+async def create_tables() -> None:
+    if engine is None:
+        return
+    from sqlmodel import SQLModel
+
+    from apps.secom.app.models.user import User  # noqa: F401
+
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
 async def dispose_engine() -> None:
