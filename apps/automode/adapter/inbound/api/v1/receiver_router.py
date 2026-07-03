@@ -28,7 +28,15 @@ async def receive_email(
             body=schema.body,
             sender=schema.sender,
             source=schema.source,
+            message_id=schema.message_id,
         )
+    )
+    logger.info(
+        "[receive_email] id=%s subject=%s sender=%s source=%s",
+        result.id,
+        result.subject,
+        result.sender,
+        result.source,
     )
     return ReceivedEmailResponse(
         id=result.id,

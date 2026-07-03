@@ -119,7 +119,7 @@ cloudflared tunnel --url http://localhost:5678 &
 
 ### 6-1. 토픽 생성
 - Cloud Console → Pub/Sub → API 활성화(최초 1회) → **Topics** → **CREATE TOPIC**
-- Topic ID: 예) `gmail-push-topic`
+- Topic ID: 예) `gmail-push` (실제 적용값)
 - "기본 구독 추가" 체크 해제 (구독은 아래에서 직접 생성)
 
 ### 6-2. Gmail에 발행 권한 부여 (필수, 빠지면 push 자체가 안 옴)
@@ -133,7 +133,7 @@ cloudflared tunnel --url http://localhost:5678 &
 - Subscription ID: 예) `gmail-push-sub`
 - Topic: 위에서 만든 토픽 선택
 - 전송 유형: **Push** (기본값 Pull이므로 반드시 변경)
-- 엔드포인트 URL: `<터널 URL>/webhook/gmail-push`
+- 엔드포인트 URL: `<터널 URL>/webhook/gmail-push` (실제 적용: `https://n8n.paiksunggum.com/webhook/gmail-push`)
 - 인증 사용: 끔 (초기), 페이로드 래핑: 끔 (표준 형식 유지)
 
 ### 6-4. 비용
@@ -156,7 +156,7 @@ n8n **HTTP Request 노드**로 1회 호출 (기존 흐름과 독립적으로 추
 Body:
 ```json
 {
-  "topicName": "projects/<PROJECT_ID>/topics/gmail-push-topic",
+  "topicName": "projects/<PROJECT_ID>/topics/gmail-push",
   "labelIds": ["INBOX"]
 }
 ```
@@ -222,24 +222,40 @@ Schedule Trigger (매일 1회) → HTTP Request (watch 재호출, 6번과 동일
 
 ---
 
-## 10. 백엔드(FastAPI) 연동 시 체크리스트
+## 10. 백엔드(FastAPI) 연동 — 실제 구현 (`apps/automode`)
 
-기존 더미 엔드포인트 예시:
+위 런북대로 구축을 마치고 실제로 완성한 파이프라인. 아래는 더미가 아니라 지금 라이브로 동작 중인 코드다.
+
+**엔드포인트**: `POST /api/automode/receive` (`adapter/inbound/api/v1/receiver_router.py`)
+
 ```python
-@mary_mail_router.get("/receive")
-async def receive_mail(...) -> MaryMailResponse:
-    return await mary.receive_mail(
-        MaryMailSchema(id=12, content="메리 왓슨 (Mary)")
+@receiver_router.post("", response_model=ReceivedEmailResponse)
+async def receive_email(
+    schema: ReceivedEmailRequest,
+    use_case: ReceiverUseCase = Depends(get_receiver_use_case),
+) -> ReceivedEmailResponse:
+    result = await use_case.receive(
+        ReceivedEmailCommand(
+            subject=schema.subject,
+            body=schema.body,
+            sender=schema.sender,
+            source=schema.source,
+            message_id=schema.message_id,
+        )
     )
+    ...
 ```
 
-**개선 방향**
-- `GET` → `POST`로 전환: n8n이 실제 메일 데이터(제목/발신자/본문/messageId)를 body로 넘길 수 있도록
-- 요청 스키마를 하드코딩된 `id`, `content` 대신 `subject`, `from`, `to`, `preview`, `messageId` 등 실제 필드로 재정의
-- n8n → 백엔드 요청이 도달 가능한 주소인지 확인:
-  - 같은 컴퓨터/Docker 환경이면 `http://host.docker.internal:8000/...`
-  - 배포된 공개 도메인이 있으면 해당 URL 그대로 사용
-- 저장 목적이 (a) DB 저장 + 화면 표시라면, 수신 후 DB insert 로직과 조회용 GET 엔드포인트를 별도로 설계
+**요청 스키마** (`ReceivedEmailRequest`): `subject`, `body`, `sender`, `source`, `message_id`(선택) — 8절에서 언급한 `Subject/From/snippet/id`를 n8n이 `subject/sender/body/message_id`로 매핑해서 전달.
+
+**저장 파이프라인**: `ReceivedEmailPgVectorRepository`가 `save()` 호출 시
+1. `message_id`가 이미 저장돼 있으면 재저장 없이 기존 결과 반환 (Pub/Sub 재전달로 인한 중복 방지, 12절 함정 참고)
+2. BGE-M3(Ollama, `bge_m3_embedding_client.py`)로 제목+본문 임베딩 생성 (1024차원)
+3. `automode_received_emails` 테이블(pgvector)에 INSERT
+
+**조회용 엔드포인트**: `GET /api/automode/receive` — 저장된 이메일 목록 반환 (`list_emails`)
+
+**n8n 쪽 실제 연결**: `Webhook`(`paik-orchestrator`) 노드에서 `스팸 분류`와 **병렬로** `pgvector 저장` HTTP Request 노드를 붙여서, 스팸 여부와 무관하게 모든 수신 메일이 저장되도록 구성함.
 
 ---
 
@@ -250,10 +266,12 @@ async def receive_mail(...) -> MaryMailResponse:
 | n8n 셀프호스팅 | 무료 | 커뮤니티 에디션, 무제한 |
 | Gmail API (watch/조회) | 무료 | 개인 사용량으로 할당량 초과 불가능 |
 | Pub/Sub | 무료 | 월 10GiB 무료 한도, 실사용량은 월 몇 KB |
-| Cloudflare Tunnel | 무료 | Quick Tunnel 기준 |
+| Cloudflare Tunnel | 무료 | Named Tunnel(`paiksunggum.com`)로 전환 완료 — 도메인 비용만 별도, 터널 자체는 무료 |
 | Schedule Trigger 갱신 | 무료 | n8n + API 호출뿐 |
 
 n8n Cloud를 쓰거나 Gmail을 비정상적으로 대량 호출하는 경우에만 유료화됨 (개인 사용 시 해당 없음).
+
+**실제로 적용한 구성**: `api.paiksunggum.com`(백엔드), `n8n.paiksunggum.com`(n8n) 두 개의 Public Hostname을 같은 Named Tunnel에 등록해서 씀. Cloudflare 대시보드 → Networks → Tunnels → 터널 선택 → 경로 추가 → "게시된 애플리케이션"으로 각각 등록 (서비스 URL은 `http://host.docker.internal:<포트>`, cloudflared가 docker-compose 네트워크 밖의 독립 컨테이너라서 이렇게 우회 필요).
 
 ---
 
@@ -266,17 +284,20 @@ n8n Cloud를 쓰거나 Gmail을 비정상적으로 대량 호출하는 경우에
 - **n8n 표현식 문법**: `{{ }}` 두 겹, 바깥에 추가 중괄호 넣지 말 것. 문자열 내 따옴표는 자동 이스케이프됨
 - **Quick Tunnel 재시작 시 URL 변경** → Pub/Sub 구독의 엔드포인트 URL을 그때마다 수동 갱신해야 함 (운영 단계에서는 Named Tunnel + 도메인으로 전환)
 - **Pub/Sub 알림에는 메일 내용이 없음** — historyId만 오므로 반드시 별도 조회 단계 필요
+- **[실제 사고 사례] Pub/Sub 구독이 죽은 URL을 가리켜도 아무 에러도 안 남**: n8n·터널·백엔드·IAM 권한이 전부 정상인데도 실시간 메일이 하나도 안 들어온 적이 있었음. 원인은 Pub/Sub 구독(`gmail-push-sub`)의 엔드포인트 URL이 예전에 잠깐 띄웠던 **Quick Tunnel(`*.trycloudflare.com`) 주소**로 그대로 남아있던 것 — 그 터널은 이미 죽어 있었지만 Pub/Sub도, n8n도, Google Cloud 콘솔도 어디에도 에러가 안 뜨고 그냥 조용히 실패함.
+  - 진단 순서: ① 터널/도메인이 실제로 응답하는지 직접 POST 테스트 ② n8n Executions 탭에서 새 실행이 생기는지 확인 ③ 안 생기면 GCP 콘솔 → Pub/Sub → 구독 → **수정(Edit)** 화면에서 엔드포인트 URL을 직접 눈으로 확인 (목록/상세 화면엔 URL이 안 보이고 수정 화면에서만 보임)
+  - Named Tunnel(고정 도메인)로 전환하면 이 문제 자체가 원천적으로 사라짐 — 위 4번 경고가 왜 있는지 이 사고로 실감함
 
 ---
 
 ## 13. 단계별 완료 체크리스트
 
 - [ ] n8n 셀프호스팅 실행
-- [ ] (택1) 폴링 Gmail Trigger 또는 Push 전체 체인 구성
+- [ ] (실시간 동기화) 폴링 Gmail Push 로 전체 체인 구성
 - [ ] Cloudflare Tunnel 공개 주소 확보 및 헬스체크
 - [ ] n8n Webhook 노드 (`/webhook/gmail-push`) 생성
 - [ ] Pub/Sub 토픽 생성 + Gmail Publisher 권한 부여
-- [ ] Push 구독 생성 (엔드포인트 = 터널 URL)
+- [ ] Push 구독 생성 (엔드포인트 = 퀵 터널 URL)
 - [ ] `users.watch()` 등록 (historyId/expiration 응답 확인)
 - [ ] 메일 조회 → 백엔드 전송 노드 구성 및 실제 메일로 종단 테스트
 - [ ] watch 갱신 Schedule Trigger 등록 및 활성화

@@ -82,9 +82,12 @@ async def create_all_tables() -> None:
 
     from sqlmodel import SQLModel
 
+    from apps.automode.adapter.outbound.orm.received_email_orm import (
+        ReceivedEmailORM,  # noqa: F401
+    )
     from apps.sports.app.models.ads_model import Ads  # noqa: F401
-    from apps.sports.app.models.sports_model import Sports  # noqa: F401
     from apps.sports.app.models.practice_model import Practice  # noqa: F401
+    from apps.sports.app.models.sports_model import Sports  # noqa: F401
     from apps.sports.app.models.users_model import User  # noqa: F401
     from apps.titanic.adapter.outbound.orm.passenger_jack_trainer_orm import (
         JackTrainerORM,  # noqa: F401
@@ -95,6 +98,7 @@ async def create_all_tables() -> None:
     from core.matrix.theone_base import TheOneBase
 
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(SQLModel.metadata.create_all)
         await conn.run_sync(TheOneBase.metadata.create_all)

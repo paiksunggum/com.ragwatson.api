@@ -65,6 +65,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# --- 파인튜닝 모델 체크포인트 (대용량 바이너리, 커밋 금지) ---
+models/
+
 # --- 데이터베이스·로컬 상태 ---
 *.sqlite
 *.sqlite3

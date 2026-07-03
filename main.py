@@ -50,6 +50,7 @@ from apps.home_page import home_page_html
 from apps.automode.adapter.inbound.api import automode_router
 from apps.titanic.adapter.inbound.api import titanic_router
 from apps.silicon_valley.adapter.inbound.api import silicon_valley_router
+from apps.vision2.adapter.inbound.api import vision2_router
 from apps.weather.app.schemas import WeatherResponse
 from apps.weather.app.weather_controller import WeatherController
 
@@ -79,6 +80,7 @@ app.include_router(forma_router)
 app.include_router(automode_router)
 app.include_router(titanic_router)
 app.include_router(silicon_valley_router)
+app.include_router(vision2_router)
 app.include_router(login_router)
 app.include_router(signup_router)
 app.include_router(sports_router)

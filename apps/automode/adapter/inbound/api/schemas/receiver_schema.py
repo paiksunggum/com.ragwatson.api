@@ -10,6 +10,7 @@ class ReceivedEmailRequest(BaseModel):
     body: str = ""
     sender: str = ""
     source: str = "unknown"
+    message_id: str | None = None
 
 
 class ReceivedEmailResponse(BaseModel):
