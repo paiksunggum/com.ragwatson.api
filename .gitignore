@@ -77,6 +77,16 @@ models/
 *.log
 logs/
 
+# --- YOLO 테스트 산출물 (모델 가중치·다운로드 샘플 이미지는 컨테이너 WORKDIR에 저장됨) ---
+apps/vision2/tests/output/
+/yolov8n.pt
+/bus.jpg
+
+# --- YOLO 얼굴 인식 학습 산출물 ---
+/yolov8n-cls.pt
+apps/vision2/resources/yolo_train/runs/
+apps/vision2/resources/yolo_train/*.cache
+
 # --- OS·에디터 잡파일 ---
 .DS_Store
 Thumbs.db

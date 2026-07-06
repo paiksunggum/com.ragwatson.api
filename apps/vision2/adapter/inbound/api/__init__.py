@@ -3,8 +3,10 @@
 from fastapi import APIRouter
 
 from apps.vision2.adapter.inbound.api.v1.vision_router import vision_router
+from apps.vision2.adapter.inbound.api.v1.yolo_router import yolo_router
 
 vision2_router = APIRouter(prefix="/api/vision2", tags=["vision2"])
 vision2_router.include_router(vision_router)
+vision2_router.include_router(yolo_router)
 
 __all__ = ["vision2_router"]
